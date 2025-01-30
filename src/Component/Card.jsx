@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import Select from 'react-select';
 import './Card.css';
 
 export default function ReportSummary() {
   const [fromDate, setFromDate] = useState(new Date());
   const [toDate, setToDate] = useState(new Date());
   const [reportData, setReportData] = useState([]);
-  const [productCode, setProductCode] = useState('MCF01');
-  const [productOptions, setProductOptions] = useState([]);
+  const [selectedSites, setSelectedSites] = useState([]); // تغيير هنا لتمثيل أكثر من موقع
+  const [siteOptions, setSiteOptions] = useState([]);
 
-  
   useEffect(() => {
     const fetchProductCodes = async () => {
       try {
@@ -19,7 +19,12 @@ export default function ReportSummary() {
         const { data } = await axios.get('https://cms-prod.menta-lb.com/api/v1/productCodes', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setProductOptions(data.productCodeRequests);
+        // تحويل البيانات إلى الشكل المناسب لـ react-select
+        const options = data.productCodeRequests.map(product => ({
+          value: product.productCode,
+          label: product.productCode,
+        }));
+        setSiteOptions(options);
       } catch (error) {
         console.error('Error fetching product codes:', error.response?.data || error.message);
       }
@@ -31,9 +36,10 @@ export default function ReportSummary() {
     event.preventDefault();
     try {
       const token = localStorage.getItem('userToken');
+      const selectedProductCodes = selectedSites.map(site => site.value).join(',');
       const { data } = await axios.get(`https://cms-prod.menta-lb.com/api/card-details/recordsByProducts`, {
         params: {
-          productCodes: productCode,
+          productCodes: selectedProductCodes,
           fromDate: fromDate.toISOString().split('T')[0],
           toDate: toDate.toISOString().split('T')[0],
         },
@@ -86,18 +92,13 @@ export default function ReportSummary() {
       <form onSubmit={handleSubmit} className="report-form">
         <div className="input-group">
           <label htmlFor="productCode">Product Code:</label>
-          <select
-            id="productCode"
-            value={productCode}
-            onChange={(e) => setProductCode(e.target.value)}
-            className="select-box"
-          >
-            {productOptions.map((product) => (
-              <option key={product.productCode} value={product.productCode}>
-                {product.productCode}
-              </option>
-            ))}
-          </select>
+          <Select
+            isMulti
+            options={siteOptions}
+            value={selectedSites}
+            onChange={setSelectedSites}
+            className="site-select"
+          />
         </div>
         <DatePicker selected={fromDate} onChange={setFromDate} className="date-picker" />
         <DatePicker selected={toDate} onChange={setToDate} className="date-picker" />
